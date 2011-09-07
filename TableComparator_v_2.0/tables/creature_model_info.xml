@@ -1,0 +1,6 @@
+<Table>
+  <field name="modelid"/>
+  <field name="bounding_radius"/>
+  <field name="combat_reach"/>
+  <field name="gender"/>
+</Table>

@@ -1,0 +1,22 @@
+<Table>
+  <field name="entry"/>
+  <field name="speed_run"/>
+  <field name="speed_walk"/>
+  <field name="faction_a"/>
+  <field name="faction_h"/>
+  <field name="dynamicflags"/>
+  <field name="unit_flags"/>
+  <field name="rangeattacktime"/>
+  <field name="baseattacktime"/>
+  <field name="scale"/>
+  <field name="unit_class"/>
+  <field name="mindmg"/>
+  <field name="maxdmg"/>
+  <field name="attackpower"/>
+  <field name="rangedattackpower"/>
+  <field name="dmg_multiplier"/>
+  <field name="Vehicle_Id"/>
+  <field name="rangeattacktime"/>
+  <field name="rangeattacktime"/>
+  <field name="rangeattacktime"/>
+</Table>
