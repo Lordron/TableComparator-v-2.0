@@ -16,7 +16,4 @@
   <field name="rangedattackpower"/>
   <field name="dmg_multiplier"/>
   <field name="Vehicle_Id"/>
-  <field name="rangeattacktime"/>
-  <field name="rangeattacktime"/>
-  <field name="rangeattacktime"/>
 </Table>
