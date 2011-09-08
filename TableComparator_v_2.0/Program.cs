@@ -14,13 +14,12 @@ namespace TableComparator_v_2._0
         MySqlConnection connection;
         static void Main()
         {
+            Console.Title = "Table Comparator V 2.0";
             new Program().Initial();
         }
 
         void Initial()
         {
-            Console.Title = "Table Comparator V 2.0";
-
             connection = InitConnection();
             if (!IsConnected)
                 return;
@@ -37,44 +36,43 @@ namespace TableComparator_v_2._0
             if (structures.Length == 0)
                 throw new Exception("Dirrectory 'tables' is empty!");
 
-            foreach (FileInfo file in structures)
+            foreach (FileInfo structure in structures)
             {
-                XmlDocument def = new XmlDocument();
+                XmlDocument str = new XmlDocument();
 
-                def.Load(file.FullName);
+                str.Load(structure.FullName);
 
-                XmlNodeList fields = def.GetElementsByTagName("field");
+                XmlNodeList fields = str.GetElementsByTagName("field");
                 if (fields == null)
                 {
-                    Console.WriteLine("{0} has no field 'fields'", file.Name);
+                    Console.WriteLine("{0} has no field 'fields'", structure.Name);
                     continue;
                 }
 
-                List<string> dbFields = new List<string>();
+                List<string> fieldsName = new List<string>();
                 for (int i = 0; i < fields.Count; ++i)
                 {
                     XmlAttributeCollection attributes = fields[i].Attributes;
-                    dbFields.Add(attributes["name"].Value);
+                    fieldsName.Add(attributes["name"].Value);
                 }
-                Work(dbFields, file.Name.Replace(".xml", string.Empty));
+                Work(fieldsName, structure.Name.Replace(".xml", string.Empty));
             }
             Console.WriteLine("==========||====================================================||=========||");
             Console.WriteLine("-=================================== Done ==================================-");
             Console.Read();
         }
 
-        void Work(List<string> dbFields, string tableName)
+        void Work(List<string> fieldsName, string tableName)
         {
             StringBuilder content = new StringBuilder();
             content.Append("SELECT ");
-            foreach (string field in dbFields)
+            foreach (string field in fieldsName)
                 content.AppendFormat("{0}.{1}, ", tableName, field);
 
-            foreach (string field in dbFields)
+            foreach (string field in fieldsName)
                 content.AppendFormat("{0}_sniff.{1}, ", tableName, field);
 
-
-            string entry = dbFields[0];
+            string entry = fieldsName[0];
             content.AppendFormat("FROM {0} INNER JOIN {0}_sniff ON {0}.{1} = {0}_sniff.{1} ORDER BY {0}.{1};", tableName, entry).AppendLine().Replace(", FROM", " FROM");
 
             using (MySqlCommand command = new MySqlCommand(content.ToString(), connection))
@@ -111,7 +109,7 @@ namespace TableComparator_v_2._0
                         {
                             if (!Equals(normal[y], sniff[y]))
                             {
-                                writer.WriteLine(string.Format(NumberFormatInfo.InvariantInfo, "UPDATE `{0}` SET `{1}` = '{2}' WHERE `{3}` = {4};", tableName, dbFields[y], sniff[y], entry, sniff[0]));
+                                writer.WriteLine(string.Format(NumberFormatInfo.InvariantInfo, "UPDATE `{0}` SET `{1}` = '{2}' WHERE `{3}` = {4};", tableName, fieldsName[y], sniff[y], entry, sniff[0]));
                                 ++badField;
                             }
                         }
