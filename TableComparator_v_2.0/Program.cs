@@ -11,7 +11,7 @@ namespace TableComparator_v_2._0
 {
     class Program
     {
-        MySqlConnection connection;
+        MySqlConnection _connection;
         static void Main()
         {
             Console.Title = "Table Comparator V 2.0";
@@ -20,7 +20,7 @@ namespace TableComparator_v_2._0
 
         void Initial()
         {
-            connection = InitConnection();
+            _connection = InitConnection();
             if (!IsConnected)
                 return;
 
@@ -36,26 +36,24 @@ namespace TableComparator_v_2._0
             if (structures.Length == 0)
                 throw new Exception("Dirrectory 'tables' is empty!");
 
-            foreach (FileInfo structure in structures)
+            foreach (FileInfo document in structures)
             {
-                XmlDocument str = new XmlDocument();
+                XmlDocument xmlDocument = new XmlDocument();
 
-                str.Load(structure.FullName);
+                xmlDocument.Load(document.FullName);
 
-                XmlNodeList fields = str.GetElementsByTagName("field");
-                if (fields == null)
+                XmlNodeList fields = xmlDocument.GetElementsByTagName("field");
+                if (fields.Count < 1)
                 {
-                    Console.WriteLine("{0} has no field 'fields'", structure.Name);
+                    Console.WriteLine("File '{0}' has no field 'fields'", document.Name);
                     continue;
                 }
 
                 List<string> fieldsName = new List<string>();
                 for (int i = 0; i < fields.Count; ++i)
-                {
-                    XmlAttributeCollection attributes = fields[i].Attributes;
-                    fieldsName.Add(attributes["name"].Value);
-                }
-                Work(fieldsName, structure.Name.Replace(".xml", string.Empty));
+                    fieldsName.Add(fields[i].Attributes["name"].Value);
+
+                Work(fieldsName, document.Name.Replace(".xml", string.Empty));
             }
             Console.WriteLine("==========||====================================================||=========||");
             Console.WriteLine("-=================================== Done ==================================-");
@@ -75,48 +73,48 @@ namespace TableComparator_v_2._0
             string entry = fieldsName[0];
             content.AppendFormat("FROM {0} INNER JOIN {0}_sniff ON {0}.{1} = {0}_sniff.{1} ORDER BY {0}.{1};", tableName, entry).AppendLine().Replace(", FROM", " FROM");
 
-            using (MySqlCommand command = new MySqlCommand(content.ToString(), connection))
+            using (MySqlCommand command = new MySqlCommand(content.ToString(), _connection))
             {
-                List<List<object>> normalData = new List<List<object>>();
-                List<List<object>> sniffData = new List<List<object>>();
+                List<List<object>> dbNormalData = new List<List<object>>();
+                List<List<object>> dbSniffData = new List<List<object>>();
                 using (MySqlDataReader db = command.ExecuteReader())
                 {
                     while (db.Read())
                     {
-                        List<object> normal = new List<object>();
-                        List<object> sniff = new List<object>();
+                        List<object> normalData = new List<object>();
+                        List<object> sniffData = new List<object>();
                         int count = db.FieldCount / 2;
                         for (int i = 0; i < count; ++i)
-                            normal.Add(db[i]);
+                            normalData.Add(db[i]);
 
                         for (int i = count; i < db.FieldCount; ++i)
-                            sniff.Add(db[i]);
+                            sniffData.Add(db[i]);
 
-                        normalData.Add(normal);
-                        sniffData.Add(sniff);
+                        dbNormalData.Add(normalData);
+                        dbSniffData.Add(sniffData);
                     }
                 }
 
                 using (StreamWriter writer = new StreamWriter(string.Format("{0}.sql", tableName)))
                 {
-                    int count = normalData.Count;
-                    int badField = 0;
+                    int badFieldCount = 0;
+                    int count = dbNormalData.Count;
                     for (int i = 0; i < count; ++i)
                     {
-                        List<object> normal = normalData[i];
-                        List<object> sniff = sniffData[i];
-                        for (int y = 0; y < normal.Count; ++y)
+                        List<object> normalData = dbNormalData[i];
+                        List<object> sniffData = dbSniffData[i];
+                        for (int y = 0; y < normalData.Count; ++y)
                         {
-                            if (!Equals(normal[y], sniff[y]))
+                            if (!Equals(normalData[y], sniffData[y]))
                             {
-                                writer.WriteLine(string.Format(NumberFormatInfo.InvariantInfo, "UPDATE `{0}` SET `{1}` = '{2}' WHERE `{3}` = {4};", tableName, fieldsName[y], sniff[y], entry, sniff[0]));
-                                ++badField;
+                                writer.WriteLine(string.Format(NumberFormatInfo.InvariantInfo, "UPDATE `{0}` SET `{1}` = '{2}' WHERE `{3}` = {4};", tableName, fieldsName[y], sniffData[y], entry, sniffData[0]));
+                                ++badFieldCount;
                             }
                         }
-                        if (count - 1 == i)
+                        if ((count - 1) == i)
                         {
-                            Console.WriteLine("==========|| {0,-11}|| {1,-13}|| {2,-21}|| {3, -8}||", count, badField,
-                                              tableName, (((float)badField / count) * 100));
+                            Console.WriteLine("==========|| {0,-11}|| {1,-13}|| {2,-21}|| {3, -8}||", count, badFieldCount,
+                                              tableName, (((float)badFieldCount / count) * 100));
                         }
                     }
                 }
@@ -151,9 +149,9 @@ namespace TableComparator_v_2._0
             {
                 try
                 {
-                    connection.Open();
-                    connection.Close();
-                    connection.Open();
+                    _connection.Open();
+                    _connection.Close();
+                    _connection.Open();
                     return true;
                 }
                 catch
