@@ -9,16 +9,17 @@ using MySql.Data.MySqlClient;
 
 namespace TableComparator_v_2._0
 {
-    class Program
+    internal class Program
     {
-        MySqlConnection _connection;
-        static void Main()
+        private MySqlConnection _connection;
+
+        public static void Main()
         {
             Console.Title = "Table Comparator V 2.0";
             new Program().Initial();
         }
 
-        void Initial()
+        public void Initial()
         {
             _connection = InitConnection();
             if (!IsConnected)
@@ -28,14 +29,8 @@ namespace TableComparator_v_2._0
             Console.WriteLine("==========||====================================================||=========||");
             Console.WriteLine("Statistics|| Templates: || Bad fields:  || Table:               || %       ||");
 
-            string path = Path.Combine(Directory.GetCurrentDirectory(), "tables");
-            if (!Directory.Exists(path))
-                throw new Exception("Dirrectory 'tables' is exist!");
-
-            FileInfo[] structures = new DirectoryInfo(path).GetFiles();
-            if (structures.Length == 0)
-                throw new Exception("Dirrectory 'tables' is empty!");
-
+            DirectoryInfo info = new DirectoryInfo("tables");
+            FileInfo[] structures = info.GetFiles(".xml");
             foreach (FileInfo document in structures)
             {
                 XmlDocument xmlDocument = new XmlDocument();
@@ -43,7 +38,7 @@ namespace TableComparator_v_2._0
                 xmlDocument.Load(document.FullName);
 
                 XmlNodeList fields = xmlDocument.GetElementsByTagName("field");
-                if (fields.Count < 1)
+                if (fields.Count == 0)
                 {
                     Console.WriteLine("File '{0}' has no field 'fields'", document.Name);
                     continue;
@@ -51,47 +46,45 @@ namespace TableComparator_v_2._0
 
                 List<string> fieldsName = new List<string>();
                 for (int i = 0; i < fields.Count; ++i)
-                    fieldsName.Add(fields[i].Attributes["name"].Value);
+                {
+                    XmlAttributeCollection attributes = fields[i].Attributes;
+                    fieldsName.Add(attributes["name"].Value);
+                }
 
-                Work(fieldsName, document.Name.Replace(".xml", string.Empty));
-            }
-            Console.WriteLine("==========||====================================================||=========||");
-            Console.WriteLine("-=================================== Done ==================================-");
-            Console.Read();
-        }
+                string tableName = document.Name.Replace(".xml", string.Empty);
 
-        void Work(List<string> fieldsName, string tableName)
-        {
-            StringBuilder content = new StringBuilder();
-            content.Append("SELECT ");
-            foreach (string field in fieldsName)
-                content.AppendFormat("{0}.{1}, ", tableName, field);
+                StringBuilder content = new StringBuilder();
+                content.Append("SELECT ");
+                foreach (string field in fieldsName)
+                    content.AppendFormat("{0}.{1}, ", tableName, field);
 
-            foreach (string field in fieldsName)
-                content.AppendFormat("{0}_sniff.{1}, ", tableName, field);
+                foreach (string field in fieldsName)
+                    content.AppendFormat("{0}_sniff.{1}, ", tableName, field);
 
-            string entry = fieldsName[0];
-            content.AppendFormat("FROM {0} INNER JOIN {0}_sniff ON {0}.{1} = {0}_sniff.{1} ORDER BY {0}.{1};", tableName, entry).AppendLine().Replace(", FROM", " FROM");
+                string entry = fieldsName[0];
+                content.AppendFormat("FROM {0} INNER JOIN {0}_sniff ON {0}.{1} = {0}_sniff.{1} ORDER BY {0}.{1};", tableName, entry).AppendLine().Replace(", FROM", " FROM");
 
-            using (MySqlCommand command = new MySqlCommand(content.ToString(), _connection))
-            {
                 List<List<object>> dbNormalData = new List<List<object>>();
                 List<List<object>> dbSniffData = new List<List<object>>();
-                using (MySqlDataReader db = command.ExecuteReader())
+
+                using (MySqlCommand command = new MySqlCommand(content.ToString(), _connection))
                 {
-                    while (db.Read())
+                    using (MySqlDataReader db = command.ExecuteReader())
                     {
-                        List<object> normalData = new List<object>();
-                        List<object> sniffData = new List<object>();
-                        int count = db.FieldCount / 2;
-                        for (int i = 0; i < count; ++i)
-                            normalData.Add(db[i]);
+                        int count = db.FieldCount/2;
+                        while (db.Read())
+                        {
+                            List<object> normalData = new List<object>();
+                            List<object> sniffData = new List<object>();
+                            for (int i = 0; i < count; ++i)
+                                normalData.Add(db[i]);
 
-                        for (int i = count; i < db.FieldCount; ++i)
-                            sniffData.Add(db[i]);
+                            for (int i = count; i < (count*2); ++i)
+                                sniffData.Add(db[i]);
 
-                        dbNormalData.Add(normalData);
-                        dbSniffData.Add(sniffData);
+                            dbNormalData.Add(normalData);
+                            dbSniffData.Add(sniffData);
+                        }
                     }
                 }
 
@@ -103,32 +96,32 @@ namespace TableComparator_v_2._0
                     {
                         List<object> normalData = dbNormalData[i];
                         List<object> sniffData = dbSniffData[i];
-                        for (int y = 0; y < normalData.Count; ++y)
+                        for (int j = 0; j < normalData.Count; ++j)
                         {
-                            if (!Equals(normalData[y], sniffData[y]))
+                            if (!Equals(normalData[j], sniffData[j]))
                             {
-                                writer.WriteLine(string.Format(NumberFormatInfo.InvariantInfo, "UPDATE `{0}` SET `{1}` = '{2}' WHERE `{3}` = {4};", tableName, fieldsName[y], sniffData[y], entry, sniffData[0]));
+                                writer.WriteLine(string.Format(NumberFormatInfo.InvariantInfo, "UPDATE `{0}` SET `{1}` = '{2}' WHERE `{3}` = {4};", tableName, fieldsName[j], sniffData[j], entry, sniffData[0]));
                                 ++badFieldCount;
                             }
                         }
-                        if ((count - 1) == i)
-                        {
-                            Console.WriteLine("==========|| {0,-11}|| {1,-13}|| {2,-21}|| {3, -8}||", count, badFieldCount,
-                                              tableName, (((float)badFieldCount / count) * 100));
-                        }
                     }
+                    Console.WriteLine("==========|| {0,-11}|| {1,-13}|| {2,-21}|| {3:P, -8}||", count, badFieldCount,
+                                      tableName, (((float) badFieldCount/count)*100));
                 }
             }
+            Console.WriteLine("==========||====================================================||=========||");
+            Console.WriteLine("-=================================== Done ==================================-");
+            Console.Read();
         }
 
-        MySqlConnection InitConnection()
+        public MySqlConnection InitConnection()
         {
             if (File.Exists("config.xml"))
             {
                 using (StreamReader reader = new StreamReader("config.xml"))
                 {
-                    XmlSerializer serializer = new XmlSerializer(typeof(Config));
-                    Config config = (Config)serializer.Deserialize(reader);
+                    XmlSerializer serializer = new XmlSerializer(typeof (Config));
+                    Config config = (Config) serializer.Deserialize(reader);
 
                     string connectionInfo =
                         string.Format(
