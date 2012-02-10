@@ -98,6 +98,9 @@ namespace TableComparator_v_2._0
                         List<object> sniffData = dbSniffData[i];
                         for (int j = 0; j < normalData.Count; ++j)
                         {
+                            if (!Equals(normalData[0], sniffData[0]))
+                                continue;
+
                             if (Equals(normalData[j], sniffData[j]))
                                 continue;
 
