@@ -40,7 +40,7 @@ namespace TableComparator_v_2._0
                 if (fields.Count == 0)
                     continue;
 
-                List<string> fieldsName = new List<string>();
+                List<string> fieldsName = new List<string>(fields.Count);
                 for (int i = 0; i < fields.Count; ++i)
                 {
                     XmlAttributeCollection attributes = fields[i].Attributes;
@@ -67,24 +67,22 @@ namespace TableComparator_v_2._0
                 List<List<object>> dbSniffData = new List<List<object>>();
 
                 using (MySqlCommand command = new MySqlCommand(content.ToString(), _connection))
+                using (MySqlDataReader db = command.ExecuteReader())
                 {
-                    using (MySqlDataReader db = command.ExecuteReader())
+                    int count = db.FieldCount/2;
+                    while (db.Read())
                     {
-                        int count = db.FieldCount/2;
-                        while (db.Read())
-                        {
-                            List<object> normalData = new List<object>();
-                            List<object> sniffData = new List<object>();
+                        List<object> normalData = new List<object>(count);
+                        List<object> sniffData = new List<object>(count);
 
-                            for (int i = 0; i < count; ++i)
-                                normalData.Add(db[i]);
+                        for (int i = 0; i < count; ++i)
+                            normalData.Add(db[i]);
 
-                            for (int i = count; i < (count*2); ++i)
-                                sniffData.Add(db[i]);
+                        for (int i = count; i < (count*2); ++i)
+                            sniffData.Add(db[i]);
 
-                            dbNormalData.Add(normalData);
-                            dbSniffData.Add(sniffData);
-                        }
+                        dbNormalData.Add(normalData);
+                        dbSniffData.Add(sniffData);
                     }
                 }
 
