@@ -9,25 +9,20 @@ using TableComparator_v_2._0.Properties;
 
 namespace TableComparator_v_2._0
 {
-    internal class Program
+    public static class Program
     {
-        private MySqlConnection _connection;
-
         public static void Main()
         {
             Console.Title = "Table Comparator V 2.0";
-            new Program().Initial();
-        }
 
-        public void Initial()
-        {
-            _connection = InitConnection();
-            if (!IsConnected)
+            MySqlConnection connection = new MySqlConnection(Settings.Default.ConnectionString);
+            if (!connection.Connected())
                 return;
 
-            Console.WriteLine("-================================= Welcome =================================-");
-            Console.WriteLine("==========||====================================================||=========||");
-            Console.WriteLine("Statistics|| Templates: || Bad fields:  || Table:               || %       ||");
+            Console.WriteLine("-================================== Welcome ==================================-");
+            Console.WriteLine("==========||========================================================||=======||");
+            Console.WriteLine("Statistics|| Total:  || Bad fields:  || Table:                      || %     ||");
+            Console.WriteLine("==========||========================================================||=======||");
 
             DirectoryInfo info = new DirectoryInfo("tables");
             FileInfo[] structures = info.GetFiles("*.xml", SearchOption.TopDirectoryOnly);
@@ -66,7 +61,7 @@ namespace TableComparator_v_2._0
                 List<List<object>> dbNormalData = new List<List<object>>();
                 List<List<object>> dbSniffData = new List<List<object>>();
 
-                using (MySqlCommand command = new MySqlCommand(content.ToString(), _connection))
+                using (MySqlCommand command = new MySqlCommand(content.ToString(), connection))
                 using (MySqlDataReader db = command.ExecuteReader())
                 {
                     int count = db.FieldCount/2;
@@ -92,6 +87,7 @@ namespace TableComparator_v_2._0
                     int count = dbNormalData.Count;
                     for (int i = 0; i < count; ++i)
                     {
+                        bool error = false;
                         List<object> normalData = dbNormalData[i];
                         List<object> sniffData = dbSniffData[i];
                         for (int j = 0; j < normalData.Count; ++j)
@@ -103,48 +99,36 @@ namespace TableComparator_v_2._0
                                 continue;
 
                             writer.WriteLine(string.Format(NumberFormatInfo.InvariantInfo, "UPDATE `{0}` SET `{1}` = '{2}' WHERE `{3}` = {4};", tableName, fieldsName[j], sniffData[j], entry, sniffData[0]));
-                            ++badFieldCount;
+                            error = true;
                         }
+                        if (error)
+                            ++badFieldCount;
                     }
-                    
-                    Console.WriteLine("==========|| {0,-11}|| {1,-13}|| {2,-21}|| {3:P, -8}||", count, badFieldCount,
-                                      tableName, (((float) badFieldCount/count)*100));
+
+                    Console.WriteLine("==========|| {0,-8}|| {1,-13}|| {2,-28}|| {3,-6}||", count, badFieldCount,
+                                      tableName, Math.Round(((float) badFieldCount/count)*100, 3));
                 }
             }
 
-            Console.WriteLine("==========||====================================================||=========||");
-            Console.WriteLine("-=================================== Done ==================================-");
+            Console.WriteLine("==========||========================================================||=======||");
+            Console.WriteLine("-=================================== Done ====================================-");
             Console.Read();
         }
 
-        public MySqlConnection InitConnection()
+        public static bool Connected(this MySqlConnection connection)
         {
-            string connectionInfo =
-                string.Format(
-                    "host={0};port='{1}';database='{2}';UserName='{3}';Password='{4}';Connection Timeout='{5}'",
-                    Settings.Default.Host, Settings.Default.Port, Settings.Default.Database, Settings.Default.Login, Settings.Default.Password,
-                    Settings.Default.ConnectionTimeOut);
-
-            return new MySqlConnection(connectionInfo);
-        }
-
-        public bool IsConnected
-        {
-            get
+            try
             {
-                try
-                {
-                    _connection.Open();
-                    _connection.Close();
-                    _connection.Open();
-                    return true;
-                }
-                catch
-                {
-                    Console.ForegroundColor = ConsoleColor.Red;
-                    Console.WriteLine("Check your MySQL server");
-                    return false;
-                }
+                connection.Open();
+                connection.Close();
+                connection.Open();
+                return true;
+            }
+            catch
+            {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine("Error! Cannot open connection. Check your connection info and MySQL server");
+                return false;
             }
         }
     }
