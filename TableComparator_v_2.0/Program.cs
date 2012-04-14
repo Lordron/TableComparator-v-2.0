@@ -46,7 +46,6 @@ namespace TableComparator_v_2._0
                 string tableName = document.Name.Replace(".xml", string.Empty);
 
                 StringBuilder content = new StringBuilder();
-
                 content.Append("SELECT ");
 
                 foreach (string field in fieldsName)
@@ -55,8 +54,8 @@ namespace TableComparator_v_2._0
                 foreach (string field in fieldsName)
                     content.AppendFormat("{0}_sniff.{1}, ", tableName, field);
 
-                string entry = fieldsName[0];
-                content.AppendFormat("FROM {0} INNER JOIN {0}_sniff ON {0}.{1} = {0}_sniff.{1} ORDER BY {0}.{1};", tableName, entry).AppendLine().Replace(", FROM", " FROM");
+                string key = fieldsName[0];
+                content.AppendFormat("FROM {0} INNER JOIN {0}_sniff ON {0}.{1} = {0}_sniff.{1} ORDER BY {0}.{1};", tableName, key).AppendLine().Replace(", FROM", " FROM");
 
                 List<List<object>> dbNormalData = new List<List<object>>();
                 List<List<object>> dbSniffData = new List<List<object>>();
@@ -84,29 +83,30 @@ namespace TableComparator_v_2._0
                 using (StreamWriter writer = new StreamWriter(string.Format("{0}.sql", tableName)))
                 {
                     int badFieldCount = 0;
-                    int count = dbNormalData.Count;
-                    for (int i = 0; i < count; ++i)
+                    for (int i = 0; i < dbNormalData.Count; ++i)
                     {
                         bool error = false;
                         List<object> normalData = dbNormalData[i];
                         List<object> sniffData = dbSniffData[i];
+
+                        object entry = normalData[0];
+                        if (!Equals(entry, sniffData[0]))
+                            continue;
+
                         for (int j = 0; j < normalData.Count; ++j)
                         {
-                            if (!Equals(normalData[0], sniffData[0]))
-                                continue;
-
                             if (Equals(normalData[j], sniffData[j]))
                                 continue;
 
-                            writer.WriteLine(string.Format(NumberFormatInfo.InvariantInfo, "UPDATE `{0}` SET `{1}` = '{2}' WHERE `{3}` = {4};", tableName, fieldsName[j], sniffData[j], entry, sniffData[0]));
+                            writer.WriteLine(string.Format(NumberFormatInfo.InvariantInfo, "UPDATE `{0}` SET `{1}` = '{2}' WHERE `{3}` = {4};", tableName, fieldsName[j], sniffData[j], key, entry));
                             error = true;
                         }
                         if (error)
                             ++badFieldCount;
                     }
 
-                    Console.WriteLine("==========|| {0,-8}|| {1,-13}|| {2,-28}|| {3,-6}||", count, badFieldCount,
-                                      tableName, Math.Round(((float) badFieldCount/count)*100, 3));
+                    Console.WriteLine("==========|| {0,-8}|| {1,-13}|| {2,-28}|| {3,-6}||", dbNormalData.Count, badFieldCount,
+                                      tableName, Math.Round(((float) badFieldCount/dbNormalData.Count)*100, 3));
                 }
             }
 
