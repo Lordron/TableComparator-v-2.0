@@ -45,69 +45,83 @@ namespace TableComparator_v_2._0
 
                 string tableName = document.Name.Replace(".xml", string.Empty);
 
-                StringBuilder content = new StringBuilder();
-                content.Append("SELECT ");
+                StringBuilder cmdText = new StringBuilder();
+                cmdText.Append("SELECT ");
 
                 foreach (string field in fieldsName)
-                    content.AppendFormat("{0}.{1}, ", tableName, field);
+                    cmdText.AppendFormat("{0}.{1}, ", tableName, field);
 
                 foreach (string field in fieldsName)
-                    content.AppendFormat("{0}_sniff.{1}, ", tableName, field);
+                    cmdText.AppendFormat("{0}_sniff.{1}, ", tableName, field);
 
                 string key = fieldsName[0];
-                content.AppendFormat("FROM {0} INNER JOIN {0}_sniff ON {0}.{1} = {0}_sniff.{1} ORDER BY {0}.{1};", tableName, key).AppendLine().Replace(", FROM", " FROM");
+                cmdText.AppendFormat("FROM {0} INNER JOIN {0}_sniff ON {0}.{1} = {0}_sniff.{1} ORDER BY {0}.{1};", tableName, key).AppendLine().Replace(", FROM", " FROM");
 
-                List<List<object>> dbNormalData = new List<List<object>>();
-                List<List<object>> dbSniffData = new List<List<object>>();
+                List<List<object>> normalDataTemplates = new List<List<object>>();
+                List<List<object>> sniffedDataTemplates = new List<List<object>>();
 
-                using (MySqlCommand command = new MySqlCommand(content.ToString(), connection))
+                using (MySqlCommand command = new MySqlCommand(cmdText.ToString(), connection))
                 using (MySqlDataReader db = command.ExecuteReader())
                 {
                     int count = db.FieldCount/2;
                     while (db.Read())
                     {
-                        List<object> normalData = new List<object>(count);
-                        List<object> sniffData = new List<object>(count);
+                        List<object> normalTemplate = new List<object>(count);
+                        List<object> sniffTemplate = new List<object>(count);
 
                         for (int i = 0; i < count; ++i)
-                            normalData.Add(db[i]);
+                            normalTemplate.Add(db[i]);
 
                         for (int i = count; i < (count*2); ++i)
-                            sniffData.Add(db[i]);
+                            sniffTemplate.Add(db[i]);
 
-                        dbNormalData.Add(normalData);
-                        dbSniffData.Add(sniffData);
+                        normalDataTemplates.Add(normalTemplate);
+                        sniffedDataTemplates.Add(sniffTemplate);
                     }
                 }
 
-                using (StreamWriter writer = new StreamWriter(string.Format("{0}.sql", tableName)))
+                int badFieldCount = 0;
+                StringBuilder content = new StringBuilder();
+                for (int i = 0; i < normalDataTemplates.Count; ++i)
                 {
-                    int badFieldCount = 0;
-                    for (int i = 0; i < dbNormalData.Count; ++i)
-                    {
-                        bool error = false;
-                        List<object> normalData = dbNormalData[i];
-                        List<object> sniffData = dbSniffData[i];
+                    bool error = false;
+                    StringBuilder contentInternal = new StringBuilder();
+                    List<object> normalTemplate = normalDataTemplates[i];
+                    List<object> sniffTemplate = sniffedDataTemplates[i];
 
-                        object entry = normalData[0];
-                        if (!Equals(entry, sniffData[0]))
+                    object entry = normalTemplate[0];
+                    if (!Equals(entry, sniffTemplate[0]))
+                        continue;
+
+                    contentInternal.AppendFormat("UPDATE `{0}` SET ", tableName);
+                    for (int j = 1; j < normalTemplate.Count; ++j)
+                    {
+                        if (normalTemplate[j].Equals(sniffTemplate[j]))
                             continue;
 
-                        for (int j = 1; j < normalData.Count; ++j)
-                        {
-                            if (Equals(normalData[j], sniffData[j]))
-                                continue;
-
-                            writer.WriteLine(string.Format(NumberFormatInfo.InvariantInfo, "UPDATE `{0}` SET `{1}` = '{2}' WHERE `{3}` = {4};", tableName, fieldsName[j], sniffData[j], key, entry));
-                            error = true;
-                        }
-                        if (error)
-                            ++badFieldCount;
+                        contentInternal.AppendFormat(NumberFormatInfo.InvariantInfo, "`{0}` = '{1}', ", fieldsName[j], sniffTemplate[j]);
+                        error = true;
                     }
+                    contentInternal.Remove(contentInternal.Length - 2, 2);
+                    contentInternal.AppendFormat(" WHERE `{0}` = {1};", key, entry).AppendLine();
 
-                    Console.WriteLine("==========|| {0,-8}|| {1,-13}|| {2,-28}|| {3,-6}||", dbNormalData.Count, badFieldCount,
-                                      tableName, Math.Round(((float) badFieldCount/dbNormalData.Count)*100, 3));
+                    if (!error)
+                        continue;
+
+                    content.Append(contentInternal.ToString());
+                    ++badFieldCount;
                 }
+
+                if (content.Length > 0)
+                {
+                    using (StreamWriter writer = new StreamWriter(string.Format("{0}.sql", tableName)))
+                    {
+                        writer.Write(content.ToString());
+                    }
+                }
+
+                Console.WriteLine("==========|| {0,-8}|| {1,-13}|| {2,-28}|| {3,-6}||", normalDataTemplates.Count, badFieldCount,
+                                  tableName, Math.Round(((float)badFieldCount / normalDataTemplates.Count) * 100, 3));
             }
 
             Console.WriteLine("==========||========================================================||=======||");
