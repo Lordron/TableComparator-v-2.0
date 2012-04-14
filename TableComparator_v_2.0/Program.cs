@@ -93,7 +93,7 @@ namespace TableComparator_v_2._0
                         if (!Equals(entry, sniffData[0]))
                             continue;
 
-                        for (int j = 0; j < normalData.Count; ++j)
+                        for (int j = 1; j < normalData.Count; ++j)
                         {
                             if (Equals(normalData[j], sniffData[j]))
                                 continue;
