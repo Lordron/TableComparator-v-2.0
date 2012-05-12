@@ -45,7 +45,8 @@ namespace TableComparator_v_2._0
 
                 string tableName = document.Name.Replace(".xml", string.Empty);
 
-                StringBuilder cmdText = new StringBuilder();
+                StringBuilder cmdText = new StringBuilder(1024);
+
                 cmdText.Append("SELECT ");
 
                 foreach (string field in fieldsName)
@@ -57,31 +58,39 @@ namespace TableComparator_v_2._0
                 string key = fieldsName[0];
                 cmdText.AppendFormat("FROM {0} INNER JOIN {0}_sniff ON {0}.{1} = {0}_sniff.{1} ORDER BY {0}.{1};", tableName, key).AppendLine().Replace(", FROM", " FROM");
 
-                List<List<object>> normalDataTemplates = new List<List<object>>();
-                List<List<object>> sniffedDataTemplates = new List<List<object>>();
+                List<List<object>> normalDataTemplates = new List<List<object>>(UInt16.MaxValue);
+                List<List<object>> sniffedDataTemplates = new List<List<object>>(UInt16.MaxValue);
 
-                using (MySqlCommand command = new MySqlCommand(cmdText.ToString(), connection))
-                using (MySqlDataReader db = command.ExecuteReader())
+                try
                 {
-                    int count = db.FieldCount/2;
-                    while (db.Read())
+                    using (MySqlCommand command = new MySqlCommand(cmdText.ToString(), connection))
+                    using (MySqlDataReader reader = command.ExecuteReader())
                     {
-                        List<object> normalTemplate = new List<object>(count);
-                        List<object> sniffTemplate = new List<object>(count);
+                        int count = reader.FieldCount / 2;
+                        while (reader.Read())
+                        {
+                            List<object> normalTemplate = new List<object>(count);
+                            List<object> sniffTemplate = new List<object>(count);
 
-                        for (int i = 0; i < count; ++i)
-                            normalTemplate.Add(db[i]);
+                            for (int i = 0; i < count; ++i)
+                                normalTemplate.Add(reader[i]);
 
-                        for (int i = count; i < (count*2); ++i)
-                            sniffTemplate.Add(db[i]);
+                            for (int i = count; i < (count * 2); ++i)
+                                sniffTemplate.Add(reader[i]);
 
-                        normalDataTemplates.Add(normalTemplate);
-                        sniffedDataTemplates.Add(sniffTemplate);
+                            normalDataTemplates.Add(normalTemplate);
+                            sniffedDataTemplates.Add(sniffTemplate);
+                        }
                     }
+                }
+                catch (Exception e)
+                {
+                    Console.WriteLine("ERROR: {0}", e.Message);
+                    continue;
                 }
 
                 int badFieldCount = 0;
-                StringBuilder content = new StringBuilder();
+                StringBuilder content = new StringBuilder(UInt16.MaxValue);
                 for (int i = 0; i < normalDataTemplates.Count; ++i)
                 {
                     bool error = false;
@@ -90,7 +99,7 @@ namespace TableComparator_v_2._0
                     List<object> sniffTemplate = sniffedDataTemplates[i];
 
                     object entry = normalTemplate[0];
-                    if (!Equals(entry, sniffTemplate[0]))
+                    if (!entry.Equals(sniffTemplate[0]))
                         continue;
 
                     contentInternal.AppendFormat("UPDATE `{0}` SET ", tableName);
@@ -112,7 +121,7 @@ namespace TableComparator_v_2._0
                     ++badFieldCount;
                 }
 
-                if (content.Length > 0)
+                if (badFieldCount > 0)
                 {
                     using (StreamWriter writer = new StreamWriter(string.Format("{0}.sql", tableName)))
                     {
