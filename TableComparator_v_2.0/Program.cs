@@ -43,21 +43,21 @@ namespace TableComparator_v_2._0
                         fieldsName.Add(attributes["name"].Value);
                 }
 
+                string key = fieldsName[0];
                 string tableName = document.Name.Replace(".xml", string.Empty);
 
                 StringBuilder cmdText = new StringBuilder(1024);
+                {
+                    cmdText.Append("SELECT ");
 
-                cmdText.Append("SELECT ");
+                    foreach (string field in fieldsName)
+                        cmdText.AppendFormat("{0}.{1}, ", tableName, field);
 
-                foreach (string field in fieldsName)
-                    cmdText.AppendFormat("{0}.{1}, ", tableName, field);
+                    foreach (string field in fieldsName)
+                        cmdText.AppendFormat("{0}_sniff.{1}, ", tableName, field);
 
-                foreach (string field in fieldsName)
-                    cmdText.AppendFormat("{0}_sniff.{1}, ", tableName, field);
-
-                string key = fieldsName[0];
-                cmdText.AppendFormat("FROM {0} INNER JOIN {0}_sniff ON {0}.{1} = {0}_sniff.{1} ORDER BY {0}.{1};", tableName, key).AppendLine().Replace(", FROM", " FROM");
-
+                    cmdText.AppendFormat("FROM {0} INNER JOIN {0}_sniff ON {0}.{1} = {0}_sniff.{1} ORDER BY {0}.{1};", tableName, key).AppendLine().Replace(", FROM", " FROM");
+                }
                 List<List<object>> normalDataTemplates = new List<List<object>>(UInt16.MaxValue);
                 List<List<object>> sniffedDataTemplates = new List<List<object>>(UInt16.MaxValue);
 
@@ -117,7 +117,7 @@ namespace TableComparator_v_2._0
                     if (!error)
                         continue;
 
-                    content.Append(contentInternal.ToString());
+                    content.Append(contentInternal);
                     ++badFieldCount;
                 }
 
@@ -125,7 +125,7 @@ namespace TableComparator_v_2._0
                 {
                     using (StreamWriter writer = new StreamWriter(string.Format("{0}.sql", tableName)))
                     {
-                        writer.Write(content.ToString());
+                        writer.Write(content);
                     }
                 }
 
