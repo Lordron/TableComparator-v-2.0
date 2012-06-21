@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Text;
-using System.Xml;
+using System.Xml.Serialization;
 using MySql.Data.MySqlClient;
 using TableComparator_v_2._0.Properties;
 
@@ -28,33 +28,22 @@ namespace TableComparator_v_2._0
             FileInfo[] structures = info.GetFiles("*.xml", SearchOption.TopDirectoryOnly);
             foreach (FileInfo document in structures)
             {
-                XmlDocument xmlDocument = new XmlDocument();
-                xmlDocument.Load(document.OpenRead());
+                XmlSerializer serializer = new XmlSerializer(typeof(Table));
+                Table table = (Table)serializer.Deserialize(document.OpenRead());
 
-                XmlNodeList fields = xmlDocument.GetElementsByTagName("field");
-                if (fields.Count == 0)
-                    continue;
-
-                List<string> fieldsName = new List<string>(fields.Count);
-                for (int i = 0; i < fields.Count; ++i)
-                {
-                    XmlAttributeCollection attributes = fields[i].Attributes;
-                    if (attributes != null)
-                        fieldsName.Add(attributes["name"].Value);
-                }
-
-                string key = fieldsName[0];
-                string tableName = document.Name.Replace(".xml", string.Empty);
+                string key = table.Fields[0];
+                string prefix = table.Prefix;
+                string tableName = table.TableName;
 
                 StringBuilder cmdText = new StringBuilder(1024);
                 {
                     cmdText.Append("SELECT ");
 
-                    foreach (string field in fieldsName)
+                    foreach (string field in table.Fields)
                         cmdText.AppendFormat("{0}.{1}, ", tableName, field);
 
-                    foreach (string field in fieldsName)
-                        cmdText.AppendFormat("{0}_sniff.{1}, ", tableName, field);
+                    foreach (string field in table.Fields)
+                        cmdText.AppendFormat("{0}_{1}.{2}, ", tableName, prefix, field);
 
                     cmdText.AppendFormat("FROM {0} INNER JOIN {0}_sniff ON {0}.{1} = {0}_sniff.{1} ORDER BY {0}.{1};", tableName, key).AppendLine().Replace(", FROM", " FROM");
                 }
@@ -108,7 +97,7 @@ namespace TableComparator_v_2._0
                         if (normalTemplate[j].Equals(sniffTemplate[j]))
                             continue;
 
-                        contentInternal.AppendFormat(NumberFormatInfo.InvariantInfo, "`{0}` = '{1}', ", fieldsName[j], sniffTemplate[j]);
+                        contentInternal.AppendFormat(NumberFormatInfo.InvariantInfo, "`{0}` = '{1}', ", table.Fields[j], sniffTemplate[j]);
                         error = true;
                     }
                     contentInternal.Remove(contentInternal.Length - 2, 2);
@@ -130,7 +119,7 @@ namespace TableComparator_v_2._0
                 }
 
                 Console.WriteLine("==========|| {0,-8}|| {1,-13}|| {2,-28}|| {3,-6}||", normalDataTemplates.Count, badFieldCount,
-                                  tableName, Math.Round(((float)badFieldCount / normalDataTemplates.Count) * 100, 3));
+                    tableName, badFieldCount > 0 ? Math.Round(((float)badFieldCount / normalDataTemplates.Count) * 100 , 3) : 0.0f);
             }
 
             Console.WriteLine("==========||========================================================||=======||");

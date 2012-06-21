@@ -1,19 +1,23 @@
-<Table>
-  <field name="entry"/>
-  <field name="speed_run"/>
-  <field name="speed_walk"/>
-  <field name="faction_a"/>
-  <field name="faction_h"/>
-  <field name="dynamicflags"/>
-  <field name="unit_flags"/>
-  <field name="rangeattacktime"/>
-  <field name="baseattacktime"/>
-  <field name="scale"/>
-  <field name="unit_class"/>
-  <field name="mindmg"/>
-  <field name="maxdmg"/>
-  <field name="attackpower"/>
-  <field name="rangedattackpower"/>
-  <field name="dmg_multiplier"/>
-  <field name="Vehicle_Id"/>
+<?xml version="1.0"?>
+<Table xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <TableName>creature_template</TableName>
+  <Prefix>sniff</Prefix>
+  <Fields>
+    <string>entry</string>
+    <string>speed_run</string>
+    <string>speed_walk</string>
+    <string>faction_a</string>
+    <string>faction_h</string>
+    <string>dynamicflags</string>
+    <string>unit_flags</string>
+    <string>rangeattacktime</string>
+    <string>scale</string>
+    <string>unit_class</string>
+    <string>mindmg</string>
+    <string>maxdmg</string>
+    <string>attackpower</string>
+    <string>rangedattackpower</string>
+    <string>dmg_multiplier</string>
+    <string>Vehicle_Id</string>
+  </Fields>
 </Table>

@@ -1,6 +1,11 @@
-<Table>
-  <field name="entry"/>
-  <field name="equipEntry1"/>
-  <field name="equipEntry2"/>
-  <field name="equipEntry3"/>
+<?xml version="1.0"?>
+<Table xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <TableName>creature_equip_template</TableName>
+  <Prefix>sniff</Prefix>
+  <Fields>
+    <string>entry</string>
+    <string>equipEntry1</string>
+    <string>equipEntry2</string>
+    <string>equipEntry3</string>
+  </Fields>
 </Table>

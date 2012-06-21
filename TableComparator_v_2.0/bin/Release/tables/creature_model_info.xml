@@ -1,6 +1,11 @@
-<Table>
-  <field name="modelid"/>
-  <field name="bounding_radius"/>
-  <field name="combat_reach"/>
-  <field name="gender"/>
+<?xml version="1.0"?>
+<Table xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <TableName>creature_model_info</TableName>
+  <Prefix>sniff</Prefix>
+  <Fields>
+    <string>modelid</string>
+    <string>bounding_radius</string>
+    <string>combat_reach</string>
+    <string>gender</string>
+  </Fields>
 </Table>

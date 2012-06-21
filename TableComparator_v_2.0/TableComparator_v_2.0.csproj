@@ -52,6 +52,7 @@
       <DesignTimeSharedInput>True</DesignTimeSharedInput>
       <DependentUpon>Settings.settings</DependentUpon>
     </Compile>
+    <Compile Include="Table.cs" />
   </ItemGroup>
   <ItemGroup>
     <Content Include="tables\creature_model_info.xml">
